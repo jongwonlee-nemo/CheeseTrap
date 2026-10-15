@@ -2,7 +2,7 @@ import ApplicationServices
 import Cocoa
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let navigation = MissionControlNavigationService()
     private var statusItem: NSStatusItem?
     private var accessibilityPollTimer: Timer?
@@ -48,14 +48,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem?.button?.setAccessibilityLabel("CheeseTrap")
         statusItem?.button?.toolTip = isTrusted ? "CheeseTrap" : "CheeseTrap (Accessibility Permission Required)"
         let menu = NSMenu()
+        menu.delegate = self
         if !isTrusted {
             let item = NSMenuItem(title: "Grant Accessibility Access…", action: #selector(openAccessibilitySettings), keyEquivalent: "")
             item.target = self
             menu.addItem(item)
             menu.addItem(NSMenuItem.separator())
         }
+        let shortcutStatus = NSMenuItem(title: "Display shortcuts unavailable — check other shortcut apps", action: nil, keyEquivalent: "")
+        shortcutStatus.tag = 1
+        shortcutStatus.isEnabled = false
+        shortcutStatus.isHidden = !navigation.displayShortcutsUnavailable
+        menu.addItem(shortcutStatus)
         menu.addItem(NSMenuItem(title: "Quit CheeseTrap", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         statusItem?.menu = menu
+    }
+
+    func menuWillOpen(_ menu: NSMenu) {
+        menu.item(withTag: 1)?.isHidden = !navigation.displayShortcutsUnavailable
     }
 
     @objc private func openAccessibilitySettings() {

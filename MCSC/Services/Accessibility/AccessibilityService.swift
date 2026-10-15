@@ -11,11 +11,7 @@ final class AccessibilityService {
     func closeWindow(_ windowID: CGWindowID) {
         guard let app = targetApp(for: windowID) else { return }
         let appElement = AXUIElementCreateApplication(app.processIdentifier)
-        guard let windows: [AXUIElement] = attribute(kAXWindowsAttribute, for: appElement),
-              let window = windows.first(where: {
-                  var identifier: CGWindowID = 0
-                  return _AXUIElementGetWindow($0, &identifier) == .success && identifier == windowID
-              }) else { return }
+        guard let window = window(for: windowID, in: appElement) else { return }
         if let button: AXUIElement = attribute(kAXCloseButtonAttribute, for: window),
            AXUIElementPerformAction(button, kAXPressAction as CFString) == .success {
             return
@@ -38,6 +34,35 @@ final class AccessibilityService {
 
     func forceQuitApp(for windowID: CGWindowID) {
         targetApp(for: windowID)?.forceTerminate()
+    }
+
+    func focusedWindow() -> (id: CGWindowID, frame: CGRect)? {
+        guard let app = NSWorkspace.shared.frontmostApplication, app.activationPolicy == .regular,
+              let window: AXUIElement = attribute(kAXFocusedWindowAttribute, for: AXUIElementCreateApplication(app.processIdentifier)),
+              let frame = frame(for: window) else { return nil }
+        var identifier: CGWindowID = 0
+        guard _AXUIElementGetWindow(window, &identifier) == .success, identifier != 0 else { return nil }
+        return (identifier, frame)
+    }
+
+    func focusWindow(_ windowID: CGWindowID) -> Bool {
+        guard let app = targetApp(for: windowID) else { return false }
+        let appElement = AXUIElementCreateApplication(app.processIdentifier)
+        guard let window = window(for: windowID, in: appElement) else { return false }
+        app.activate()
+        _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+        _ = AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, kCFBooleanTrue)
+        _ = AXUIElementSetAttributeValue(window, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+        guard let focused: AXUIElement = attribute(kAXFocusedWindowAttribute, for: appElement) else { return false }
+        return CFEqual(focused, window)
+    }
+
+    private func window(for windowID: CGWindowID, in appElement: AXUIElement) -> AXUIElement? {
+        guard let windows: [AXUIElement] = attribute(kAXWindowsAttribute, for: appElement) else { return nil }
+        return windows.first {
+            var identifier: CGWindowID = 0
+            return _AXUIElementGetWindow($0, &identifier) == .success && identifier == windowID
+        }
     }
 
     private func targetApp(for windowID: CGWindowID) -> NSRunningApplication? {

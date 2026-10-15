@@ -6,6 +6,7 @@ final class MissionControlNavigationService {
     private let accessibility = AccessibilityService()
     private let spaces = SpaceManagementService()
     private let keyboardTap = MCKeyboardTapService()
+    private let displayFocus = DisplayFocusService()
     private let searchOverlay = SearchBarOverlay()
     private var searchSession = WindowSearchSession()
     private var screenSession = ScreenNavigationSession()
@@ -13,12 +14,23 @@ final class MissionControlNavigationService {
     private var spaceObserver: NSObjectProtocol?
     private var isActive = false
 
+    var displayShortcutsUnavailable: Bool { displayFocus.shortcutsUnavailable }
+
     init() {
         missionControl.onActivated = { [weak self] in self?.activate() }
         missionControl.onDeactivated = { [weak self] in self?.deactivate() }
         keyboardTap.onKeyDown = { [weak self] keyCode, characters, flags in
             MainActor.assumeIsolated {
                 self?.handleKeyDown(keyCode: keyCode, characters: characters, flags: flags) ?? false
+            }
+        }
+        displayFocus.onShortcut = { [weak self] forward in
+            guard let self else { return }
+            if self.missionControl.checkMissionControlActive(force: true) {
+                let flags: CGEventFlags = forward ? .maskAlternate : [.maskAlternate, .maskShift]
+                _ = self.handleKeyDown(keyCode: 48, characters: nil, flags: flags)
+            } else {
+                self.displayFocus.focusDisplay(forward: forward)
             }
         }
     }
@@ -33,10 +45,12 @@ final class MissionControlNavigationService {
                 self?.windows = []
             }
         }
+        displayFocus.start()
         missionControl.start()
     }
 
     func stop() {
+        displayFocus.stop()
         missionControl.stop()
         deactivate()
         if let spaceObserver { NSWorkspace.shared.notificationCenter.removeObserver(spaceObserver) }
@@ -48,11 +62,13 @@ final class MissionControlNavigationService {
         clearSearch()
         screenSession.begin(at: CGEvent(source: nil)?.location ?? .zero, in: screens)
         isActive = keyboardTap.start()
+        displayFocus.setMissionControlActive(isActive)
     }
 
     private func deactivate() {
         isActive = false
         keyboardTap.stop()
+        displayFocus.setMissionControlActive(false)
         clearSearch()
         windows = []
         screenSession = ScreenNavigationSession()
@@ -65,18 +81,7 @@ final class MissionControlNavigationService {
     }
 
     private var screens: [ScreenNavigationSession.Screen] {
-        let connected = NSScreen.screens
-        let primaryHeight = connected.first?.frame.height ?? 0
-        return connected.compactMap { screen -> ScreenNavigationSession.Screen? in
-            guard let id = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else { return nil }
-            // Convert Cocoa's bottom-left origin to the Quartz coordinates used by thumbnails and the pointer.
-            let frame = CGRect(x: screen.frame.minX, y: primaryHeight - screen.frame.maxY, width: screen.frame.width, height: screen.frame.height)
-            return ScreenNavigationSession.Screen(id: id.uint32Value, frame: frame)
-        }.sorted { a, b in
-            if a.frame.minX != b.frame.minX { return a.frame.minX < b.frame.minX }
-            if a.frame.minY != b.frame.minY { return a.frame.minY < b.frame.minY }
-            return a.id < b.id
-        }
+        ScreenNavigationSession.connectedScreens
     }
 
     private func handleKeyDown(keyCode: Int64, characters: String?, flags: CGEventFlags) -> Bool {

@@ -5,6 +5,7 @@
 # CheeseTrap
 
 Use the keyboard to select, activate, close, and force quit windows in macOS Mission Control.
+Switch focus between displays without opening Mission Control, too.
 CheeseTrap is a focused fork of Mission Control Shortcuts with navigation across multiple monitors.
 
 ## Build
@@ -19,17 +20,24 @@ cd CheeseTrap
 ./build.sh
 ```
 
-`build.sh` compiles the app, applies an ad-hoc signature, verifies it, and opens
-`build/CheeseTrap.app`. Run the same script to rebuild after changing the source.
-This repository provides source for local builds; it does not publish app downloads or an installer.
-
 Grant **Accessibility** access in **System Settings → Privacy & Security → Accessibility**.
 The menu bar offers **Grant Accessibility Access…** when approval is missing and **Quit CheeseTrap**.
-After a rebuild, macOS may require you to remove the old permission entry and add the rebuilt app again.
 
 ## Usage
 
-Open Mission Control with **Control+Up Arrow**, then use these keys:
+### Display switching
+
+Outside Mission Control, these shortcuts work when multiple displays are connected:
+
+| Key | Action |
+| --- | --- |
+| Option+Tab | Focus the last-used visible window on the next display |
+| Option+Shift+Tab | Focus the last-used visible window on the previous display |
+
+### Mission Control
+
+Open Mission Control.
+Navigation starts on the display under the pointer; Tab stays within that display until you switch displays.
 
 | Key | Action |
 | --- | --- |
