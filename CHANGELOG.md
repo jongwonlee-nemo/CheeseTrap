@@ -1,5 +1,11 @@
 # Changelog
 
+## Keyboard-only fork
+
+- Keep native Mission Control keyboard window selection and app-name search.
+- Remove window management actions, gestures, settings, login registration, and feedback effects.
+- Remove application logging, diagnostic exports, profiling helpers, and crash handlers.
+
 ## 0.8.1 (2 Oct 2026)
 
 - **Consolidated Window Cycle Snapping**: Replaced discrete half and third snap actions with `LeftCycleSnap` and `RightCycleSnap`. Cycling naturally sequences from Half Screen (50%) to Two-Thirds (66.6%) to One-Third (33.3%), with automatic memory and reset hysteresis (2.5 seconds) or current-frame inspection.

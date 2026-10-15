@@ -21,6 +21,6 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAccessibilityUsageDescription</key>
-	<string>MCSC needs accessibility access to close windows and force quit applications under your mouse cursor.</string>
+	<string>MCSC needs accessibility access to select and activate windows with the keyboard in Mission Control.</string>
 </dict>
 </plist>

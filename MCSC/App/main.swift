@@ -1,11 +1,10 @@
 import Cocoa
 
-// Entry point. Creates the `AppDelegate` on the main actor and hands it to
-// the shared `NSApplication` before calling `NSApplicationMain`, which runs
-// the main event loop for the rest of the process lifetime.
 MainActor.assumeIsolated {
     let delegate = AppDelegate()
     NSApplication.shared.delegate = delegate
+    // NSApplication holds its delegate weakly; keep it alive for the entire event loop.
+    withExtendedLifetime(delegate) {
+        _ = NSApplicationMain(CommandLine.argc, CommandLine.unsafeArgv)
+    }
 }
-
-_ = NSApplicationMain(CommandLine.argc, CommandLine.unsafeArgv)

@@ -1,7 +1,7 @@
 # SwiftLint configuration for MCSC
 # Style + code-smell checks. Warnings surface in CI logs; errors fail the build.
 
-# Only lint app sources; Tests have their own conventions
+# Only lint app sources
 included:
   - MCSC
 
@@ -64,11 +64,6 @@ nesting:
 large_tuple:
   warning: 3
   error: 4
-
-# Known hotspot: gesture -> action dispatch table. Refactoring it into
-# smaller handlers is tracked separately; don't let it block CI.
-excluded:
-  - MCSC/ViewModels/Routing/GestureActionRouter.swift
 
 # Core Foundation interop legitimately needs casts & pointer juggling;
 # keep them visible as warnings instead of hard errors
