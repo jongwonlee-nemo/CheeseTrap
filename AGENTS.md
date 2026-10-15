@@ -1,7 +1,11 @@
 # Project scope
 
 Keep only keyboard window selection in the native macOS Mission Control view:
-Tab/Shift+Tab, app-name search, Up/Down through search results, Return, Escape, and Backspace.
+Tab/Shift+Tab within one monitor, Option+Tab/Option+Shift+Tab between monitors,
+app-name search, Up/Down through search results, Return, Escape, and Backspace.
+
+Capture the starting monitor from the pointer on Mission Control entry; synthetic pointer movement must not change it.
+Handle monitor shortcuts only inside Mission Control with multiple monitors. Do not register global hotkeys.
 
 - Do not restore window management actions, gestures, settings, or launch at login.
 - Do not log input, search queries, window metadata, or diagnostics. Do not add telemetry or crash handlers.

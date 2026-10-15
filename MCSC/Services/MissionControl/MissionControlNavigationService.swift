@@ -8,6 +8,7 @@ final class MissionControlNavigationService {
     private let keyboardTap = MCKeyboardTapService()
     private let searchOverlay = SearchBarOverlay()
     private var searchSession = WindowSearchSession()
+    private var screenSession = ScreenNavigationSession()
     private var windows: [[String: Any]] = []
     private var spaceObserver: NSObjectProtocol?
     private var isActive = false
@@ -45,6 +46,7 @@ final class MissionControlNavigationService {
     private func activate() {
         guard !isActive else { return }
         clearSearch()
+        screenSession.begin(at: CGEvent(source: nil)?.location ?? .zero, in: screens)
         isActive = keyboardTap.start()
     }
 
@@ -53,12 +55,28 @@ final class MissionControlNavigationService {
         keyboardTap.stop()
         clearSearch()
         windows = []
+        screenSession = ScreenNavigationSession()
     }
 
     private var matches: [WindowSelectionEngine.Match] {
         searchSession.query.isEmpty
             ? WindowSelectionEngine.rowMajorSorted(in: windows)
             : searchSession.matches(in: windows)
+    }
+
+    private var screens: [ScreenNavigationSession.Screen] {
+        let connected = NSScreen.screens
+        let primaryHeight = connected.first?.frame.height ?? 0
+        return connected.compactMap { screen -> ScreenNavigationSession.Screen? in
+            guard let id = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else { return nil }
+            // Convert Cocoa's bottom-left origin to the Quartz coordinates used by thumbnails and the pointer.
+            let frame = CGRect(x: screen.frame.minX, y: primaryHeight - screen.frame.maxY, width: screen.frame.width, height: screen.frame.height)
+            return ScreenNavigationSession.Screen(id: id.uint32Value, frame: frame)
+        }.sorted { a, b in
+            if a.frame.minX != b.frame.minX { return a.frame.minX < b.frame.minX }
+            if a.frame.minY != b.frame.minY { return a.frame.minY < b.frame.minY }
+            return a.id < b.id
+        }
     }
 
     private func handleKeyDown(keyCode: Int64, characters: String?, flags: CGEventFlags) -> Bool {
@@ -76,7 +94,8 @@ final class MissionControlNavigationService {
             windows = []
             return false
         }
-        if flags.contains(.maskCommand) || flags.contains(.maskAlternate) { return false }
+        if flags.contains(.maskCommand) { return false }
+        if flags.contains(.maskAlternate), keyCode != 48 { return false }
 
         refreshWindows()
         switch searchSession.handleKey(keyCode: keyCode, characters: characters, flags: flags, windows: windows) {
@@ -85,13 +104,16 @@ final class MissionControlNavigationService {
         case .clear:
             clearSearch()
         case .updated:
-            if searchSession.query.isEmpty {
-                searchOverlay.hide()
-            } else {
-                searchOverlay.show(query: searchSession.query)
-            }
-            if let match = selectedMatch() {
-                WindowActivationAction.postSyntheticMouseMoved(to: match.centerPoint)
+            updateSearchUI()
+        case let .moveScreen(forward):
+            guard let screen = screenSession.move(forward: forward, in: screens) else { return false }
+            searchSession.selectedIndex = -1
+            windows = []
+            refreshWindows()
+            if !matches.isEmpty { searchSession.selectedIndex = 0 }
+            updateSearchUI()
+            if selectedMatch() == nil {
+                WindowActivationAction.postSyntheticMouseMoved(to: CGPoint(x: screen.frame.midX, y: screen.frame.midY))
             }
         case .activate:
             guard let match = selectedMatch() else { return true }
@@ -103,6 +125,16 @@ final class MissionControlNavigationService {
     }
 
     private func refreshWindows() {
+        let connected = screens
+        if screenSession.current(in: connected) == nil {
+            clearSearch()
+            windows = []
+            screenSession.begin(at: CGEvent(source: nil)?.location ?? .zero, in: connected)
+        }
+        guard let screen = screenSession.current(in: connected) else {
+            windows = []
+            return
+        }
         let selectedID = selectedMatch()?.windowNumber
         let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
         let candidates = list.filter { window in
@@ -115,7 +147,8 @@ final class MissionControlNavigationService {
         }
         let frames = accessibility.previewFrames(for: Set(candidates.compactMap { $0[kCGWindowNumber as String] as? CGWindowID }))
         windows = candidates.compactMap { window in
-            guard let windowID = window[kCGWindowNumber as String] as? CGWindowID, let frame = frames[windowID] else { return nil }
+            guard let windowID = window[kCGWindowNumber as String] as? CGWindowID, let frame = frames[windowID],
+                  screen.frame.contains(CGPoint(x: frame.midX, y: frame.midY)) else { return nil }
             // Use thumbnail geometry rather than desktop window geometry for both navigation and clicking.
             return [
                 kCGWindowNumber as String: windowID,
@@ -125,6 +158,19 @@ final class MissionControlNavigationService {
         }
         if let selectedID {
             searchSession.selectedIndex = matches.firstIndex { $0.windowNumber == selectedID } ?? -1
+        }
+    }
+
+    private func updateSearchUI() {
+        if searchSession.query.isEmpty {
+            searchOverlay.hide()
+        } else if let screen = NSScreen.screens.first(where: {
+            ($0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value == screenSession.screenID
+        }) {
+            searchOverlay.show(query: searchSession.query, on: screen)
+        }
+        if let match = selectedMatch() {
+            WindowActivationAction.postSyntheticMouseMoved(to: match.centerPoint)
         }
     }
 

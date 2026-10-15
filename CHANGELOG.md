@@ -2,6 +2,7 @@
 
 ## Keyboard-only fork
 
+- Start on the pointer's monitor; keep Tab and search within that monitor and use Option+Tab / Option+Shift+Tab to change monitors.
 - Keep native Mission Control keyboard window selection and app-name search.
 - Remove window management actions, gestures, settings, login registration, and feedback effects.
 - Remove application logging, diagnostic exports, profiling helpers, and crash handlers.

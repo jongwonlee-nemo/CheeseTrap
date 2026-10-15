@@ -10,6 +10,7 @@ struct WindowSearchSession {
         case updated
         case activate
         case clear
+        case moveScreen(forward: Bool)
     }
 
     private enum KeyCode {
@@ -40,6 +41,10 @@ struct WindowSearchSession {
         flags: CGEventFlags,
         windows: [[String: Any]]
     ) -> Effect {
+        let shortcutModifiers = flags.intersection([.maskCommand, .maskControl, .maskAlternate, .maskShift, .maskSecondaryFn])
+        if keyCode == KeyCode.tab, shortcutModifiers == .maskAlternate || shortcutModifiers == [.maskAlternate, .maskShift] {
+            return .moveScreen(forward: !flags.contains(.maskShift))
+        }
         guard flags.rawValue & Self.blockedModifiers.rawValue == 0 else { return .ignore }
         switch keyCode {
         case KeyCode.return, KeyCode.keypadEnter:

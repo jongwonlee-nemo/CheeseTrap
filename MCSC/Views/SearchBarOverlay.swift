@@ -14,12 +14,9 @@ final class SearchBarOverlay {
         return NSRect(x: screen.frame.midX - width / 2, y: y, width: width, height: 52)
     }
 
-    func show(query: String) {
+    func show(query: String, on screen: NSScreen) {
         if panel == nil { setupPanel() }
         guard let panel else { return }
-        let location = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first { NSMouseInRect(location, $0.frame, false) } ?? NSScreen.main ?? NSScreen.screens.first
-        guard let screen else { return }
         textField?.stringValue = query.uppercased()
         panel.setFrame(Self.panelFrame(query: query, screen: screen), display: true)
         panel.orderFrontRegardless()
