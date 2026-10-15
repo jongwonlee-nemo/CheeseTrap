@@ -11,6 +11,8 @@ struct WindowSearchSession {
         case activate
         case clear
         case moveScreen(forward: Bool)
+        case closeWindow
+        case forceQuitApp
     }
 
     private enum KeyCode {
@@ -22,6 +24,8 @@ struct WindowSearchSession {
         static let tab: Int64 = 48
         static let downArrow: Int64 = 125
         static let upArrow: Int64 = 126
+        static let w: Int64 = 13
+        static let q: Int64 = 12
     }
 
     private static let blockedModifiers: CGEventFlags = [.maskCommand, .maskAlternate, .maskControl]
@@ -44,6 +48,10 @@ struct WindowSearchSession {
         let shortcutModifiers = flags.intersection([.maskCommand, .maskControl, .maskAlternate, .maskShift, .maskSecondaryFn])
         if keyCode == KeyCode.tab, shortcutModifiers == .maskAlternate || shortcutModifiers == [.maskAlternate, .maskShift] {
             return .moveScreen(forward: !flags.contains(.maskShift))
+        }
+        if shortcutModifiers == .maskCommand {
+            if keyCode == KeyCode.w { return .closeWindow }
+            if keyCode == KeyCode.q { return .forceQuitApp }
         }
         guard flags.rawValue & Self.blockedModifiers.rawValue == 0 else { return .ignore }
         switch keyCode {

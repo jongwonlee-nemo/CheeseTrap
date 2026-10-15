@@ -8,6 +8,52 @@ private func _AXUIElementGetWindow(_ element: AXUIElement, _ identifier: UnsafeM
 final class AccessibilityService {
     private var cachedElements: [String: (pid: pid_t, element: AXUIElement)] = [:]
 
+    func closeWindow(_ windowID: CGWindowID) {
+        guard let app = targetApp(for: windowID) else { return }
+        let appElement = AXUIElementCreateApplication(app.processIdentifier)
+        guard let windows: [AXUIElement] = attribute(kAXWindowsAttribute, for: appElement),
+              let window = windows.first(where: {
+                  var identifier: CGWindowID = 0
+                  return _AXUIElementGetWindow($0, &identifier) == .success && identifier == windowID
+              }) else { return }
+        if let button: AXUIElement = attribute(kAXCloseButtonAttribute, for: window),
+           AXUIElementPerformAction(button, kAXPressAction as CFString) == .success {
+            return
+        }
+
+        // Custom title bars may require Cmd+W; verify focus before sending it to the owning process.
+        app.activate()
+        _ = AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, kCFBooleanTrue)
+        _ = AXUIElementSetAttributeValue(window, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+        guard let focused: AXUIElement = attribute(kAXFocusedWindowAttribute, for: appElement),
+              CFEqual(focused, window) else { return }
+        let source = CGEventSource(stateID: .hidSystemState)
+        guard let down = CGEvent(keyboardEventSource: source, virtualKey: 13, keyDown: true),
+              let up = CGEvent(keyboardEventSource: source, virtualKey: 13, keyDown: false) else { return }
+        down.flags = .maskCommand
+        up.flags = .maskCommand
+        down.postToPid(app.processIdentifier)
+        up.postToPid(app.processIdentifier)
+    }
+
+    func forceQuitApp(for windowID: CGWindowID) {
+        targetApp(for: windowID)?.forceTerminate()
+    }
+
+    private func targetApp(for windowID: CGWindowID) -> NSRunningApplication? {
+        guard windowID != kCGNullWindowID,
+              let list = CGWindowListCopyWindowInfo(.optionIncludingWindow, windowID) as? [[String: Any]],
+              let info = list.first(where: { ($0[kCGWindowNumber as String] as? CGWindowID) == windowID }),
+              let pid = info[kCGWindowOwnerPID as String] as? pid_t,
+              let app = NSRunningApplication(processIdentifier: pid),
+              pid != NSRunningApplication.current.processIdentifier,
+              app.activationPolicy == .regular,
+              !["com.apple.dock", "com.apple.WindowManager", "com.apple.WindowServer"].contains(app.bundleIdentifier ?? "") else {
+            return nil
+        }
+        return app
+    }
+
     func previewFrames(for windowIDs: Set<CGWindowID>) -> [CGWindowID: CGRect] {
         guard !windowIDs.isEmpty else { return [:] }
         var frames: [CGWindowID: CGRect] = [:]

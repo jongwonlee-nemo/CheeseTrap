@@ -94,11 +94,12 @@ final class MissionControlNavigationService {
             windows = []
             return false
         }
-        if flags.contains(.maskCommand) { return false }
+        if flags.contains(.maskCommand), keyCode != 12 && keyCode != 13 { return false }
         if flags.contains(.maskAlternate), keyCode != 48 { return false }
 
         refreshWindows()
-        switch searchSession.handleKey(keyCode: keyCode, characters: characters, flags: flags, windows: windows) {
+        let effect = searchSession.handleKey(keyCode: keyCode, characters: characters, flags: flags, windows: windows)
+        switch effect {
         case .ignore:
             return false
         case .clear:
@@ -120,6 +121,20 @@ final class MissionControlNavigationService {
             let point = match.centerPoint
             deactivate()
             WindowActivationAction.performSyntheticClick(at: point)
+        case .closeWindow, .forceQuitApp:
+            guard let match = selectedMatch(), let windowID = CGWindowID(exactly: match.windowNumber) else { return true }
+            let forceQuit = effect == .forceQuitApp
+            // Clear selection before dispatch so holding a destructive shortcut cannot target another window.
+            searchSession.selectedIndex = -1
+            windows = []
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.isActive, self.missionControl.checkMissionControlActive(force: true) else { return }
+                if forceQuit {
+                    self.accessibility.forceQuitApp(for: windowID)
+                } else {
+                    self.accessibility.closeWindow(windowID)
+                }
+            }
         }
         return true
     }
