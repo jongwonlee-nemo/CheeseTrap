@@ -5,9 +5,11 @@
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
-	<string>sj010.MCSC</string>
+	<string>io.github.jongwonlee-nemo.CheeseTrap</string>
 	<key>CFBundleName</key>
-	<string>$(PRODUCT_NAME)</string>
+	<string>CheeseTrap</string>
+	<key>CFBundleDisplayName</key>
+	<string>CheeseTrap</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -21,6 +23,6 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAccessibilityUsageDescription</key>
-	<string>MCSC needs accessibility access to select, activate, and close windows and force quit their applications with the keyboard in Mission Control.</string>
+	<string>CheeseTrap needs accessibility access to select, activate, and close windows and force quit their applications with the keyboard in Mission Control.</string>
 </dict>
 </plist>

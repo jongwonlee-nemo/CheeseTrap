@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		335A890D2FBCEE20006A152D /* MCSC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MCSC.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		335A890D2FBCEE20006A152D /* CheeseTrap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CheeseTrap.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -40,7 +40,7 @@
 		335A890E2FBCEE20006A152D /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				335A890D2FBCEE20006A152D /* MCSC.app */,
+				335A890D2FBCEE20006A152D /* CheeseTrap.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -66,8 +66,8 @@
 			name = MCSC;
 			packageProductDependencies = (
 			);
-			productName = MCSC;
-			productReference = 335A890D2FBCEE20006A152D /* MCSC.app */;
+			productName = CheeseTrap;
+			productReference = 335A890D2FBCEE20006A152D /* CheeseTrap.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -275,8 +275,8 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 0.8.1;
-				PRODUCT_BUNDLE_IDENTIFIER = sj010.MCSC;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.jongwonlee-nemo.CheeseTrap;
+				PRODUCT_NAME = CheeseTrap;
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -311,8 +311,8 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 0.8.1;
-				PRODUCT_BUNDLE_IDENTIFIER = sj010.MCSC;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.jongwonlee-nemo.CheeseTrap;
+				PRODUCT_NAME = CheeseTrap;
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;

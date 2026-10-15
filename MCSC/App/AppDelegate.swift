@@ -41,9 +41,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func updateStatusBar(isTrusted: Bool) {
-        let symbolName = isTrusted ? "command.circle" : "command.circle.fill"
-        statusItem?.button?.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: "MCSC")
-        statusItem?.button?.toolTip = isTrusted ? "MCSC" : "MCSC (Accessibility Permission Required)"
+        let image = NSImage(named: "MenuBarIcon")
+        image?.isTemplate = true
+        image?.size = NSSize(width: 18, height: 18)
+        statusItem?.button?.image = image
+        statusItem?.button?.setAccessibilityLabel("CheeseTrap")
+        statusItem?.button?.toolTip = isTrusted ? "CheeseTrap" : "CheeseTrap (Accessibility Permission Required)"
         let menu = NSMenu()
         if !isTrusted {
             let item = NSMenuItem(title: "Grant Accessibility Access…", action: #selector(openAccessibilitySettings), keyEquivalent: "")
@@ -51,7 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             menu.addItem(item)
             menu.addItem(NSMenuItem.separator())
         }
-        menu.addItem(NSMenuItem(title: "Quit MCSC", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: "Quit CheeseTrap", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         statusItem?.menu = menu
     }
 

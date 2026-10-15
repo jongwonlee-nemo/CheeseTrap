@@ -155,7 +155,7 @@ final class MissionControlNavigationService {
         let candidates = list.filter { window in
             guard let layer = window[kCGWindowLayer as String] as? Int, layer == 0,
                   let owner = window[kCGWindowOwnerName as String] as? String,
-                  !["Dock", "MCSC", "Window Server", "WindowManager"].contains(owner),
+                  !["Dock", "CheeseTrap", "Window Server", "WindowManager"].contains(owner),
                   let frame = WindowSelectionEngine.boundsRect(for: window), frame.width >= 100, frame.height >= 100,
                   let windowID = window[kCGWindowNumber as String] as? CGWindowID else { return false }
             return spaces.isWindowOnCurrentSpace(windowID: windowID)

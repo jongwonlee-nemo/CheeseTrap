@@ -1,5 +1,8 @@
 # Project scope
 
+CheeseTrap builds and launches through `./build.sh` as `build/CheeseTrap.app`.
+Keep upstream license notices in source and local builds. Do not add release or installation workflows.
+
 Keep keyboard window selection and the requested close/force-quit commands in the native macOS Mission Control view:
 Tab/Shift+Tab within one monitor, Option+Tab/Option+Shift+Tab between monitors,
 app-name search, Up/Down through search results, Return, Escape, and Backspace.
