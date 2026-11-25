@@ -38,11 +38,13 @@ Outside Mission Control, these shortcuts work when multiple displays are connect
 
 Open Mission Control.
 Navigation starts on the display under the pointer; Tab stays within that display until you switch displays.
+Number labels appear on the first ten windows of every display; labels on displays other than the current one are dimmed.
 
 | Key | Action |
 | --- | --- |
 | Tab / Shift+Tab | Select the next / previous window on the current monitor |
 | Option+Tab / Option+Shift+Tab | Select the next / previous monitor |
+| 1–9, 0 (top row or keypad) | Activate the labeled window on the current monitor and leave Mission Control |
 | Return / Enter | Activate the selected window and leave Mission Control |
 | Command+W | Close the selected window |
 | Command+Q | Force quit the selected window's application |

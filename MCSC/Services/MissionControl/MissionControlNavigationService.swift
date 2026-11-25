@@ -7,11 +7,16 @@ final class MissionControlNavigationService {
     private let spaces = SpaceManagementService()
     private let keyboardTap = MCKeyboardTapService()
     private let displayFocus = DisplayFocusService()
+    private let labelOverlay = WindowLabelOverlay()
     private var selection = WindowSelectionSession()
     private var screenSession = ScreenNavigationSession()
     private var windows: [[String: Any]] = []
     private var spaceObserver: NSObjectProtocol?
+    private var labelTimer: Timer?
+    private var labelsVisible = false
     private var isActive = false
+    // ponytail: fixed wait for Mission Control/Space animations to settle; tune on real hardware.
+    private static let labelDelay: TimeInterval = 0.4
 
     var displayShortcutsUnavailable: Bool { displayFocus.shortcutsUnavailable }
 
@@ -40,8 +45,10 @@ final class MissionControlNavigationService {
             forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
-                self?.selection.clear()
-                self?.windows = []
+                guard let self else { return }
+                self.selection.clear()
+                self.windows = []
+                if self.isActive { self.scheduleLabels() }
             }
         }
         displayFocus.start()
@@ -62,19 +69,29 @@ final class MissionControlNavigationService {
         screenSession.begin(at: CGEvent(source: nil)?.location ?? .zero, in: screens)
         isActive = keyboardTap.start()
         displayFocus.setMissionControlActive(isActive)
+        if isActive { scheduleLabels() }
     }
 
     private func deactivate() {
         isActive = false
         keyboardTap.stop()
         displayFocus.setMissionControlActive(false)
+        hideLabels()
         selection.clear()
         windows = []
         screenSession = ScreenNavigationSession()
     }
 
     private var matches: [WindowSelectionEngine.Match] {
-        WindowSelectionEngine.rowMajorSorted(in: windows)
+        matches(on: screenSession.current(in: screens))
+    }
+
+    private func matches(on screen: ScreenNavigationSession.Screen?) -> [WindowSelectionEngine.Match] {
+        guard let screen else { return [] }
+        return WindowSelectionEngine.rowMajorSorted(in: windows.filter {
+            guard let frame = WindowSelectionEngine.boundsRect(for: $0) else { return false }
+            return screen.frame.contains(CGPoint(x: frame.midX, y: frame.midY))
+        })
     }
 
     private var screens: [ScreenNavigationSession.Screen] {
@@ -93,6 +110,7 @@ final class MissionControlNavigationService {
         if flags.contains(.maskControl) {
             selection.clear()
             windows = []
+            scheduleLabels()
             return false
         }
         if flags.contains(.maskCommand), keyCode != 12 && keyCode != 13 { return false }
@@ -133,6 +151,7 @@ final class MissionControlNavigationService {
                 } else {
                     self.accessibility.closeWindow(windowID)
                 }
+                self.scheduleLabels()
             }
         }
         return true
@@ -145,7 +164,7 @@ final class MissionControlNavigationService {
             windows = []
             screenSession.begin(at: CGEvent(source: nil)?.location ?? .zero, in: connected)
         }
-        guard let screen = screenSession.current(in: connected) else {
+        guard screenSession.current(in: connected) != nil else {
             windows = []
             return
         }
@@ -161,8 +180,7 @@ final class MissionControlNavigationService {
         }
         let frames = accessibility.previewFrames(for: Set(candidates.compactMap { $0[kCGWindowNumber as String] as? CGWindowID }))
         windows = candidates.compactMap { window in
-            guard let windowID = window[kCGWindowNumber as String] as? CGWindowID, let frame = frames[windowID],
-                  screen.frame.contains(CGPoint(x: frame.midX, y: frame.midY)) else { return nil }
+            guard let windowID = window[kCGWindowNumber as String] as? CGWindowID, let frame = frames[windowID] else { return nil }
             // Use thumbnail geometry rather than desktop window geometry for both navigation and clicking.
             return [
                 kCGWindowNumber as String: windowID,
@@ -173,6 +191,38 @@ final class MissionControlNavigationService {
         if let selectedID {
             selection.selectedIndex = matches.firstIndex { $0.windowNumber == selectedID } ?? -1
         }
+        updateLabels()
+    }
+
+    // ponytail: labels refresh on key presses, closes, and Space changes; windows appearing on their own wait for the next one.
+    private func updateLabels() {
+        guard labelsVisible else { return }
+        labelOverlay.show(screens.map { screen in
+            WindowLabelOverlay.Group(
+                screenFrame: screen.frame,
+                thumbnails: matches(on: screen).prefix(WindowLabelOverlay.labels.count).map(\.bounds),
+                isActive: screen.id == screenSession.screenID
+            )
+        })
+    }
+
+    private func scheduleLabels() {
+        hideLabels()
+        labelTimer = Timer.scheduledCommon(interval: Self.labelDelay, repeats: false, tolerance: 0.05) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, self.isActive else { return }
+                self.labelTimer = nil
+                self.labelsVisible = true
+                self.refreshWindows()
+            }
+        }
+    }
+
+    private func hideLabels() {
+        labelTimer?.invalidate()
+        labelTimer = nil
+        labelsVisible = false
+        labelOverlay.hide()
     }
 
     private func highlightSelection() {

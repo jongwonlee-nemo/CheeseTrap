@@ -5,6 +5,8 @@ Keep upstream license notices in source and local builds. Do not add release or 
 
 Keep keyboard window selection and the requested close/force-quit commands in the native macOS Mission Control view:
 Tab/Shift+Tab within one monitor, Option+Tab/Option+Shift+Tab between monitors, Return, and Escape.
+Show number labels 1–9, 0 on the first ten thumbnails of each monitor, dimmed off the current monitor;
+pressing a label (top row or keypad, no modifiers) activates that window on the current monitor.
 Command+W closes the selected window; Command+Q force quits its application.
 
 Capture the starting monitor from the pointer on Mission Control entry; synthetic pointer movement must not change it.

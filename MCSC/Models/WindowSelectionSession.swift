@@ -20,6 +20,10 @@ struct WindowSelectionSession {
         static let q: Int64 = 12
     }
 
+    // Top-row and keypad key codes for labels 1–9, 0.
+    private static let labelKeyCodes: [Int64] = [18, 19, 20, 21, 23, 22, 26, 28, 25, 29]
+    private static let keypadLabelKeyCodes: [Int64] = [83, 84, 85, 86, 87, 88, 89, 91, 92, 82]
+
     private static let blockedModifiers: CGEventFlags = [.maskCommand, .maskAlternate, .maskControl]
 
     mutating func clear() {
@@ -50,7 +54,11 @@ struct WindowSelectionSession {
             }
             return .updated
         default:
-            return .ignore
+            guard !flags.contains(.maskShift),
+                  let index = Self.labelKeyCodes.firstIndex(of: keyCode) ?? Self.keypadLabelKeyCodes.firstIndex(of: keyCode),
+                  index < matchCount else { return .ignore }
+            selectedIndex = index
+            return .activate
         }
     }
 }
