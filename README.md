@@ -43,13 +43,10 @@ Navigation starts on the display under the pointer; Tab stays within that displa
 | --- | --- |
 | Tab / Shift+Tab | Select the next / previous window on the current monitor |
 | Option+Tab / Option+Shift+Tab | Select the next / previous monitor |
-| Type an app name | Filter windows on the current monitor by app name |
-| Up / Down while searching | Select the previous / next match |
 | Return / Enter | Activate the selected window and leave Mission Control |
 | Command+W | Close the selected window |
 | Command+Q | Force quit the selected window's application |
-| Backspace | Delete the last search character |
-| Escape | Clear the search; with no query, leave Mission Control |
+| Escape | Leave Mission Control |
 
 ## Upstream license and credits
 

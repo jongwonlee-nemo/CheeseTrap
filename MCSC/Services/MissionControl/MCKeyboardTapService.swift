@@ -1,7 +1,7 @@
 import Cocoa
 
 final class MCKeyboardTapService {
-    var onKeyDown: ((_ keyCode: Int64, _ characters: String?, _ flags: CGEventFlags) -> Bool)?
+    var onKeyDown: ((_ keyCode: Int64, _ flags: CGEventFlags) -> Bool)?
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
@@ -24,9 +24,8 @@ final class MCKeyboardTapService {
                 guard type == .keyDown else { return Unmanaged.passUnretained(event) }
                 let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
                 let flags = event.flags
-                let characters = NSEvent(cgEvent: event)?.characters
                 var swallowed = false
-                let invoke = { swallowed = service.onKeyDown?(keyCode, characters, flags) ?? false }
+                let invoke = { swallowed = service.onKeyDown?(keyCode, flags) ?? false }
                 if Thread.isMainThread { invoke() } else { DispatchQueue.main.sync(execute: invoke) }
                 return swallowed ? nil : Unmanaged.passUnretained(event)
             },

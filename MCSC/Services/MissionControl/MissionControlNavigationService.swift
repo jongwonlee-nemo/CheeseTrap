@@ -7,8 +7,7 @@ final class MissionControlNavigationService {
     private let spaces = SpaceManagementService()
     private let keyboardTap = MCKeyboardTapService()
     private let displayFocus = DisplayFocusService()
-    private let searchOverlay = SearchBarOverlay()
-    private var searchSession = WindowSearchSession()
+    private var selection = WindowSelectionSession()
     private var screenSession = ScreenNavigationSession()
     private var windows: [[String: Any]] = []
     private var spaceObserver: NSObjectProtocol?
@@ -19,16 +18,16 @@ final class MissionControlNavigationService {
     init() {
         missionControl.onActivated = { [weak self] in self?.activate() }
         missionControl.onDeactivated = { [weak self] in self?.deactivate() }
-        keyboardTap.onKeyDown = { [weak self] keyCode, characters, flags in
+        keyboardTap.onKeyDown = { [weak self] keyCode, flags in
             MainActor.assumeIsolated {
-                self?.handleKeyDown(keyCode: keyCode, characters: characters, flags: flags) ?? false
+                self?.handleKeyDown(keyCode: keyCode, flags: flags) ?? false
             }
         }
         displayFocus.onShortcut = { [weak self] forward in
             guard let self else { return }
             if self.missionControl.checkMissionControlActive(force: true) {
                 let flags: CGEventFlags = forward ? .maskAlternate : [.maskAlternate, .maskShift]
-                _ = self.handleKeyDown(keyCode: 48, characters: nil, flags: flags)
+                _ = self.handleKeyDown(keyCode: 48, flags: flags)
             } else {
                 self.displayFocus.focusDisplay(forward: forward)
             }
@@ -41,7 +40,7 @@ final class MissionControlNavigationService {
             forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
-                self?.clearSearch()
+                self?.selection.clear()
                 self?.windows = []
             }
         }
@@ -59,7 +58,7 @@ final class MissionControlNavigationService {
 
     private func activate() {
         guard !isActive else { return }
-        clearSearch()
+        selection.clear()
         screenSession.begin(at: CGEvent(source: nil)?.location ?? .zero, in: screens)
         isActive = keyboardTap.start()
         displayFocus.setMissionControlActive(isActive)
@@ -69,33 +68,30 @@ final class MissionControlNavigationService {
         isActive = false
         keyboardTap.stop()
         displayFocus.setMissionControlActive(false)
-        clearSearch()
+        selection.clear()
         windows = []
         screenSession = ScreenNavigationSession()
     }
 
     private var matches: [WindowSelectionEngine.Match] {
-        searchSession.query.isEmpty
-            ? WindowSelectionEngine.rowMajorSorted(in: windows)
-            : searchSession.matches(in: windows)
+        WindowSelectionEngine.rowMajorSorted(in: windows)
     }
 
     private var screens: [ScreenNavigationSession.Screen] {
         ScreenNavigationSession.connectedScreens
     }
 
-    private func handleKeyDown(keyCode: Int64, characters: String?, flags: CGEventFlags) -> Bool {
+    private func handleKeyDown(keyCode: Int64, flags: CGEventFlags) -> Bool {
         guard isActive, missionControl.checkMissionControlActive(force: true) else {
             deactivate()
             return false
         }
-        if keyCode == 99 || keyCode == 160 || (keyCode == 126 && flags.contains(.maskControl))
-            || (keyCode == 53 && searchSession.query.isEmpty) {
+        if keyCode == 99 || keyCode == 160 || (keyCode == 126 && flags.contains(.maskControl)) || keyCode == 53 {
             deactivate()
             return false
         }
         if flags.contains(.maskControl) {
-            clearSearch()
+            selection.clear()
             windows = []
             return false
         }
@@ -103,21 +99,19 @@ final class MissionControlNavigationService {
         if flags.contains(.maskAlternate), keyCode != 48 { return false }
 
         refreshWindows()
-        let effect = searchSession.handleKey(keyCode: keyCode, characters: characters, flags: flags, windows: windows)
+        let effect = selection.handleKey(keyCode: keyCode, flags: flags, matchCount: matches.count)
         switch effect {
         case .ignore:
             return false
-        case .clear:
-            clearSearch()
         case .updated:
-            updateSearchUI()
+            highlightSelection()
         case let .moveScreen(forward):
             guard let screen = screenSession.move(forward: forward, in: screens) else { return false }
-            searchSession.selectedIndex = -1
+            selection.selectedIndex = -1
             windows = []
             refreshWindows()
-            if !matches.isEmpty { searchSession.selectedIndex = 0 }
-            updateSearchUI()
+            if !matches.isEmpty { selection.selectedIndex = 0 }
+            highlightSelection()
             if selectedMatch() == nil {
                 WindowActivationAction.postSyntheticMouseMoved(to: CGPoint(x: screen.frame.midX, y: screen.frame.midY))
             }
@@ -130,7 +124,7 @@ final class MissionControlNavigationService {
             guard let match = selectedMatch(), let windowID = CGWindowID(exactly: match.windowNumber) else { return true }
             let forceQuit = effect == .forceQuitApp
             // Clear selection before dispatch so holding a destructive shortcut cannot target another window.
-            searchSession.selectedIndex = -1
+            selection.selectedIndex = -1
             windows = []
             DispatchQueue.main.async { [weak self] in
                 guard let self, self.isActive, self.missionControl.checkMissionControlActive(force: true) else { return }
@@ -147,7 +141,7 @@ final class MissionControlNavigationService {
     private func refreshWindows() {
         let connected = screens
         if screenSession.current(in: connected) == nil {
-            clearSearch()
+            selection.clear()
             windows = []
             screenSession.begin(at: CGEvent(source: nil)?.location ?? .zero, in: connected)
         }
@@ -177,18 +171,11 @@ final class MissionControlNavigationService {
             ]
         }
         if let selectedID {
-            searchSession.selectedIndex = matches.firstIndex { $0.windowNumber == selectedID } ?? -1
+            selection.selectedIndex = matches.firstIndex { $0.windowNumber == selectedID } ?? -1
         }
     }
 
-    private func updateSearchUI() {
-        if searchSession.query.isEmpty {
-            searchOverlay.hide()
-        } else if let screen = NSScreen.screens.first(where: {
-            ($0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value == screenSession.screenID
-        }) {
-            searchOverlay.show(query: searchSession.query, on: screen)
-        }
+    private func highlightSelection() {
         if let match = selectedMatch() {
             WindowActivationAction.postSyntheticMouseMoved(to: match.centerPoint)
         }
@@ -196,13 +183,8 @@ final class MissionControlNavigationService {
 
     private func selectedMatch() -> WindowSelectionEngine.Match? {
         let hits = matches
-        guard hits.indices.contains(searchSession.selectedIndex) else { return nil }
-        return hits[searchSession.selectedIndex]
-    }
-
-    private func clearSearch() {
-        searchSession.clear()
-        searchOverlay.hide()
+        guard hits.indices.contains(selection.selectedIndex) else { return nil }
+        return hits[selection.selectedIndex]
     }
 
     isolated deinit { stop() }
