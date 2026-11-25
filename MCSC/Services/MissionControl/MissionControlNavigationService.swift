@@ -71,7 +71,11 @@ final class MissionControlNavigationService {
         screenSession.begin(at: CGEvent(source: nil)?.location ?? .zero, in: screens)
         isActive = keyboardTap.start()
         displayFocus.setMissionControlActive(isActive)
-        if isActive { scheduleLabels() }
+        guard isActive else { return }
+        scheduleLabels()
+        // Place labels on detection; the scheduled refreshes re-place them as Mission Control animates in.
+        labelsVisible = true
+        refreshWindows()
     }
 
     private func deactivate() {
