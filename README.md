@@ -12,7 +12,7 @@ CheeseTrap is a focused fork of Mission Control Shortcuts with navigation across
 
 Requires macOS 27.0 or later and Xcode 27 or Command Line Tools with the macOS 27 SDK.
 
-Quit any running CheeseTrap or older MCSC instance, then run:
+Run the following; `./build.sh` quits a running CheeseTrap or older MCSC instance and relaunches it after the build:
 
 ```sh
 git clone https://github.com/jongwonlee-nemo/CheeseTrap.git
@@ -22,6 +22,9 @@ cd CheeseTrap
 
 Grant **Accessibility** access in **System Settings → Privacy & Security → Accessibility**.
 The menu bar offers **Grant Accessibility Access…** when approval is missing and **Quit CheeseTrap**.
+
+The first build on a Mac creates a self-signed `CheeseTrap Local` code signing identity in the login keychain;
+allow `codesign` to use it when asked. Later builds reuse it, so Accessibility approval survives rebuilds on that Mac.
 
 ## Usage
 
