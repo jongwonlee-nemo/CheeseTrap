@@ -25,8 +25,10 @@ final class SearchBarOverlay {
 
     func hide() {
         guard isVisible else { return }
+        // A reused .canJoinAllSpaces panel can stop compositing on other Spaces; rebuild it on next show.
         panel?.orderOut(nil)
-        textField?.stringValue = ""
+        panel = nil
+        textField = nil
         isVisible = false
     }
 

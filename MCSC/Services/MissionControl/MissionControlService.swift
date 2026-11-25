@@ -9,6 +9,7 @@ final class MissionControlService {
     private var isActive = false
     private var pollTimer: Timer?
     private var observers: [NSObjectProtocol] = []
+    private var dockLaunchObserver: NSObjectProtocol?
     private var axObserver: AXObserver?
     private var dockElement: AXUIElement?
     private var lastDetectionTime: Double = 0
@@ -18,6 +19,16 @@ final class MissionControlService {
     func start() {
         guard pollTimer == nil else { return }
         setupDockObserver()
+        // A relaunched Dock invalidates the AX observer, so reconnect to the new process.
+        dockLaunchObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didLaunchApplicationNotification, object: nil, queue: .main
+        ) { [weak self] notification in
+            MainActor.assumeIsolated {
+                guard (notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?.bundleIdentifier
+                    == "com.apple.dock" else { return }
+                self?.setupDockObserver()
+            }
+        }
         let center = DistributedNotificationCenter.default()
         for event in ["com.apple.expose.start", "com.apple.expose.stop", "com.apple.MissionControl.start", "com.apple.MissionControl.stop", "com.apple.showdesktop.start"] {
             let observer = center.addObserver(forName: Notification.Name(event), object: nil, queue: .main) { [weak self] _ in
@@ -67,6 +78,7 @@ final class MissionControlService {
     }
 
     private func setupDockObserver() {
+        removeDockObserver()
         guard let dock = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").first else { return }
         var observer: AXObserver?
         let result = AXObserverCreate(dock.processIdentifier, { _, _, notification, refcon in
@@ -91,6 +103,13 @@ final class MissionControlService {
         let center = DistributedNotificationCenter.default()
         for observer in observers { center.removeObserver(observer) }
         observers.removeAll()
+        if let dockLaunchObserver { NSWorkspace.shared.notificationCenter.removeObserver(dockLaunchObserver) }
+        dockLaunchObserver = nil
+        removeDockObserver()
+        markActive(false)
+    }
+
+    private func removeDockObserver() {
         if let axObserver {
             if let dockElement {
                 for name in Self.dockNotifications {
@@ -101,7 +120,6 @@ final class MissionControlService {
         }
         axObserver = nil
         dockElement = nil
-        markActive(false)
     }
 
     isolated deinit { stop() }
