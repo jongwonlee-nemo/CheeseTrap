@@ -14,9 +14,11 @@ final class MissionControlNavigationService {
     private var spaceObserver: NSObjectProtocol?
     private var labelTimer: Timer?
     private var labelsVisible = false
+    private var labelRefreshesLeft = 0
     private var isActive = false
-    // ponytail: fixed wait for Mission Control/Space animations to settle; tune on real hardware.
-    private static let labelDelay: TimeInterval = 0.4
+    // ponytail: show labels almost at once, then re-place them until animations settle; raise the count if they land early.
+    private static let labelRefreshInterval: TimeInterval = 0.1
+    private static let labelRefreshCount = 6
 
     var displayShortcutsUnavailable: Bool { displayFocus.shortcutsUnavailable }
 
@@ -208,10 +210,15 @@ final class MissionControlNavigationService {
 
     private func scheduleLabels() {
         hideLabels()
-        labelTimer = Timer.scheduledCommon(interval: Self.labelDelay, repeats: false, tolerance: 0.05) { [weak self] _ in
+        labelRefreshesLeft = Self.labelRefreshCount
+        labelTimer = Timer.scheduledCommon(interval: Self.labelRefreshInterval, repeats: true, tolerance: 0.02) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self, self.isActive else { return }
-                self.labelTimer = nil
+                self.labelRefreshesLeft -= 1
+                if self.labelRefreshesLeft <= 0 {
+                    self.labelTimer?.invalidate()
+                    self.labelTimer = nil
+                }
                 self.labelsVisible = true
                 self.refreshWindows()
             }
